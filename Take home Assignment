@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Take Home Assignment</title>
+
+<!-- ============ CLEAN SIMPLE DESIGN ============ -->
+<style>
+  :root{
+    --bg:#f7f9fc;
+    --panel:#ffffff;
+    --accent:#3b82f6;
+    --accent2:#60a5fa;
+    --good:#16a34a;
+    --bad:#dc2626;
+    --text:#1e293b;
+    --muted:#64748b;
+    --ok:#ca8a04;
+  }
+
+  *{
+    box-sizing:border-box;
+    font-family:'Inter', sans-serif;
+  }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100vh;
+    padding:30px;
+  }
+
+  h1{
+    color:var(--accent);
+    margin-bottom:10px;
+    text-align:center;
+    font-weight:700;
+  }
+
+  .app{
+    max-width:650px;
+    width:100%;
+    background:var(--panel);
+    padding:28px;
+    border-radius:18px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.05);
+  }
+
+  .progress-section{text-align:center;margin-top:10px;}
+  .progress-text{color:var(--muted);font-size:0.9rem;margin-bottom:6px;}
+
+  .progress-container{
+    width:100%;background:#e2e8f0;border-radius:10px;height:10px;overflow:hidden;
+  }
+
+  .progress-bar{
+    height:10px;width:0;
+    background:var(--accent);
+    transition:width 0.4s ease;
+  }
+
+  .question{
+    font-weight:600;
+    font-size:1.15rem;
+    margin:18px 0;
+  }
+
+  .choices{
+    display:flex;
+    gap:12px;
+    margin-top:8px;
+  }
+
+  .btn{
+    flex:1;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    font-weight:600;
+    cursor:pointer;
+    background:#eef2f7;
+    color:var(--text);
+    transition:all 0.2s;
+  }
+
+  .btn:hover{
+    background:var(--accent);
+    color:#fff;
+  }
+
+  .primary{
+    background:var(--accent);
+    color:#fff;
+  }
+
+  .feedback{
+    margin-top:14px;
+    min-height:24px;
+    font-weight:600;
+  }
+  .correct{color:var(--good);}
+  .wrong{color:var(--bad);}
+
+  input{
+    width:100%;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    color:var(--text);
+  }
+
+  .hidden{display:none;}
+
+  #summary{text-align:center;margin-top:20px;display:none;}
+  #summary h2{color:var(--accent);}
+
+  #rating{
+    font-size:1.1rem;
+    margin-top:8px;
+    font-weight:700;
+  }
+
+  .excellent{color:var(--good);}
+  .good{color:var(--ok);}
+  .tryagain{color:var(--bad);}
+</style>
+</head>
+
+<body>
+  <div class="app">
+    <h1>Take Home Assignment</h1>
+    <p style="text-align:center;color:var(--muted);">Answer true or false, and learn why.</p>
+
+    <!-- NAME INPUT -->
+    <div id="namePrompt">
+      <h3 style="text-align:center;">Enter your name to begin:</h3>
+      <input id="userName" placeholder="Your full name">
+      <button id="startBtn" class="btn primary" style="margin-top:10px;width:100%;">Start Quiz</button>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <div class="progress-section hidden" id="progressSection">
+      <div id="progressText" class="progress-text"></div>
+      <div class="progress-container">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- QUIZ AREA -->
+    <div id="quizArea" class="hidden">
+      <div id="question" class="question"></div>
+
+      <div class="choices">
+        <button id="btnTrue" class="btn">True</button>
+        <button id="btnFalse" class="btn">False</button>
+      </div>
+
+      <div id="feedback" class="feedback"></div>
+
+      <div style="text-align:center;margin-top:15px;">
+        <button id="nextBtn" class="btn primary" style="display:none;">Next ➜</button>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div id="summary">
+      <h2>Quiz Complete 🎉</h2>
+      <p id="scoreText"></p>
+      <div id="rating"></div>
+      <p id="saveStatus" style="margin-top:10px;"></p>
+      <button id="restartBtn" class="btn primary" style="margin-top:15px;">Restart Quiz</button>
+    </div>
+
+    <div class="footer" style="text-align:center;color:var(--muted);margin-top:20px;">
+      Results automatically saved to Google Sheet (admin only)
+    </div>
+  </div>
+
+<!-- ============ SCRIPT ============ -->
+<script>
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwUsuf9SESCtU-UgWBCFDsk94MQfdVu6EnEga4RAkb5XmK_xRGCjC6xnIvEqL-3S2Gt/exec";
+
+<!-- NEW QUESTIONS -->
+const questions = [
+  {
+    q:"A screenshot can be faked as easily as a photo.",
+    a:true,
+    e:"Screenshots can be edited or generated using simple tools."
+  },
+  {
+    q:"If a post uses emotional language, you should be more skeptical.",
+    a:true,
+    e:"Strong emotions are often used to manipulate readers."
+  },
+  {
+    q:"A video going viral automatically means it’s trustworthy.",
+    a:false,
+    e:"Virality measures popularity, not accuracy."
+  },
+  {
+    q:"AI-generated images can sometimes be spotted by distorted hands or backgrounds.",
+    a:true,
+    e:"AI artifacts often appear in details like hands, text, or lighting."
+  },
+  {
+    q:"You should verify a claim by checking multiple independent sources.",
+    a:true,
+    e:"Cross-checking reduces the chance of believing misinformation."
+  },
+  {
+    q:"If a message says 'Share this fast before it gets deleted,' that’s usually a red flag.",
+    a:true,
+    e:"Urgency is a manipulation tactic used in misinformation."
+  },
+  {
+    q:"Old images reused in new events are a common form of misinformation.",
+    a:true,
+    e:"Many misleading posts repurpose outdated photos or videos."
+  },
+  {
+    q:"A post with perfect grammar is always reliable.",
+    a:false,
+    e:"Professional formatting doesn't guarantee truth."
+  },
+  {
+    q:"Reverse image search can help verify if a picture is real or taken out of context.",
+    a:true,
+    e:"Tools like Google Lens show when and where a photo was first used."
+  },
+  {
+    q:"You should trust information only if someone you know shared it.",
+    a:false,
+    e:"Even friends can unintentionally spread false information."
+  }
+];
+
+let idx = 0, score = 0, userName = "", userAnswers = [];
+
+const qEl = document.getElementById('question');
+const feedback = document.getElementById('feedback');
+const btnT = document.getElementById('btnTrue');
+const btnF = document.getElementById('btnFalse');
+const nextBtn = document.getElementById('nextBtn');
+const summary = document.getElementById('summary');
+const scoreText = document.getElementById('scoreText');
+const ratingEl = document.getElementById('rating');
+const restartBtn = document.getElementById('restartBtn');
+const quizArea = document.getElementById('quizArea');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const namePrompt = document.getElementById('namePrompt');
+const progressSection = document.getElementById('progressSection');
+const saveStatus = document.getElementById('saveStatus');
+const startBtn = document.getElementById('startBtn');
+
+startBtn.onclick = () => {
+  userName = document.getElementById('userName').value.trim();
+  if(!userName) return alert("Please enter your name first.");
+  namePrompt.classList.add('hidden');
+  quizArea.classList.remove('hidden');
+  progressSection.classList.remove('hidden');
+  renderQuestion();
+};
+
+function renderQuestion(){
+  const q = questions[idx];
+  qEl.textContent = (idx+1) + ". " + q.q;
+  feedback.textContent = "";
+  btnT.disabled = btnF.disabled = false;
+  nextBtn.style.display = "none";
+  updateProgress();
+}
+
+function updateProgress(){
+  const percent = ((idx)/questions.length)*100;
+  progressBar.style.width = percent + "%";
+  progressText.textContent = `Question ${idx+1} of ${questions.length}`;
+}
+
+function answer(isTrue){
+  const q = questions[idx];
+  const correct = q.a === isTrue;
+  userAnswers.push({question:q.q, answer:isTrue, correct});
+  btnT.disabled = btnF.disabled = true;
+  feedback.textContent = (correct?"✅ Correct — ":"❌ Wrong — ") + q.e;
+  feedback.className = "feedback " + (correct?"correct":"wrong");
+  nextBtn.style.display = "inline-block";
+  if(correct) score++;
+}
+
+function next(){
+  idx++;
+  if(idx>=questions.length){
+    progressBar.style.width = "100%";
+    showSummary();
+  }else renderQuestion();
+}
+
+function showSummary(){
+  quizArea.style.display = "none";
+  summary.style.display = "block";
+  const percent = Math.round((score/questions.length)*100);
+  scoreText.textContent = `${userName}, you scored ${score} out of ${questions.length} (${percent}%)`;
+  
+  let rating="";
+  if(percent>=80){rating="Excellent work! 🌟";ratingEl.className="excellent";}
+  else if(percent>=50){rating="Good effort! 👍";ratingEl.className="good";}
+  else{rating="Try again — you'll get it! 💪";ratingEl.className="tryagain";}
+  
+  ratingEl.textContent = rating;
+  progressText.textContent = "Quiz Completed 🎉";
+
+  // Send to Google Sheet
+  fetch(SHEET_URL, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      name: userName,
+      score: score,
+      total: questions.length,
+      percent: percent,
+      answers: userAnswers
+    })
+  })
+  .then(res => res.json())
+  .then(d => saveStatus.textContent = "✅ Result saved to Google Sheet")
+  .catch(err => {
+    saveStatus.textContent = "⚠️ Could not save result. Check your Google Script.";
+  });
+}
+
+function restartQuiz(){
+  idx=0;score=0;userAnswers=[];
+  summary.style.display="none";
+  quizArea.style.display="block";
+  renderQuestion();
+}
+
+btnT.onclick=()=>answer(true);
+btnF.onclick=()=>answer(false);
+nextBtn.onclick=next;
+restartBtn.onclick=restartQuiz;
+</script>
+
+</body>
+</html>
